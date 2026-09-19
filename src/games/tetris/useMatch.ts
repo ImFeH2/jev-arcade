@@ -55,6 +55,7 @@ export function useMatch(round: number) {
     let decidedObservation = "";
     let pending: { index: number; action: Action } | null = null;
     const previousActions: Action[] = [];
+    let historyIndex = match.jev.index;
     let fall = 0;
     let last = performance.now();
     let painted = 0;
@@ -65,6 +66,10 @@ export function useMatch(round: number) {
     };
     const runnable = () => !match.paused && !match.finished && !document.hidden;
     const finish = () => {
+      if (historyIndex !== match.jev.index) {
+        historyIndex = match.jev.index;
+        previousActions.length = 0;
+      }
       match.finished = match.player.over || match.jev.over;
       if (match.finished) {
         controller?.abort();
@@ -207,9 +212,7 @@ export function useMatch(round: number) {
         event.target instanceof HTMLElement &&
         (["INPUT", "TEXTAREA"].includes(event.target.tagName) ||
           event.target.isContentEditable ||
-          event.target.closest(
-            'aside, [role="alertdialog"], [role="dialog"]',
-          ) ||
+          event.target.closest('[role="alertdialog"], [role="dialog"]') ||
           (event.target.closest("button") && event.key === " "))
       )
         return;

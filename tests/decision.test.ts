@@ -1,7 +1,23 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { act, createGame, placements, shape } from "@/games/tetris/rules";
-import { describeBoard, tetrisQuestion } from "../server/tetris";
+import { act, createGame, landing, placements } from "@/games/tetris/rules";
+import { canvasRows, describeBoard, tetrisQuestion } from "../server/tetris";
+
+test("character canvas contains the controlled piece and its landing shadow", () => {
+  const game = createGame([2]);
+  game.board[19][0] = 1;
+  const rows = canvasRows(game);
+  assert.equal(rows.length, 20);
+  assert.ok(rows.every((row) => row.length === 10));
+  assert.equal(rows[0], "....@.....");
+  assert.equal(rows[1], "...@@@....");
+  assert.equal(rows[18], "....+.....");
+  assert.equal(rows[19], "#..+++....");
+  game.piece = landing(game);
+  const grounded = canvasRows(game).join("");
+  assert.equal([...grounded].filter((cell) => cell === "@").length, 4);
+  assert.equal(grounded.includes("+"), false);
+});
 
 test("board descriptions count covered holes, heights, and uneven surfaces", () => {
   const { board } = createGame([0]);
@@ -32,8 +48,8 @@ test("wall-bound moves are unavailable and rotated pieces retain targets", () =>
   game = act(game, pieces, "down");
   assert.ok(placements(game).length > 0);
   assert.deepEqual(
-    tetrisQuestion(game, [0, 1, 2], []).state.currentPiece.cells,
-    shape(game.piece),
+    tetrisQuestion(game, [0, 1, 2], []).state.currentPiece.rows,
+    ["##", "#.", "#."],
   );
   assert.equal(act(game, pieces, "none"), game);
   assert.equal(act({ ...game, over: true }, pieces, "drop").index, game.index);
@@ -42,6 +58,7 @@ test("wall-bound moves are unavailable and rotated pieces retain targets", () =>
 test("Jev receives actual placement outcomes and named piece shapes", () => {
   const game = createGame([0, 1]);
   game.board[19] = [0, 0, 0, 0, 2, 2, 2, 2, 2, 2];
+  game.piece.x = 1;
   const request = tetrisQuestion(game, [1, 2, 3], []);
   assert.deepEqual(Object.keys(request.questions.action.criteria), [
     "left",
@@ -51,8 +68,25 @@ test("Jev receives actual placement outcomes and named piece shapes", () => {
     "rotate",
     "none",
   ]);
+  assert.equal(
+    request.questions.action.criteria.left.afterDrop.linesCleared,
+    1,
+  );
+  assert.equal(request.questions.action.criteria.drop.result.linesCleared, 0);
   assert.equal(request.state.currentPiece.name, "I");
-  assert.deepEqual(request.state.currentPiece.cells, [[1, 1, 1, 1]]);
+  assert.deepEqual(request.state.currentPiece.rows, ["####"]);
+  assert.deepEqual(request.state.currentPiece.afterClockwiseRotation, [
+    "#",
+    "#",
+    "#",
+    "#",
+  ]);
+  assert.equal(request.state.currentPiece.marker, "@");
+  assert.deepEqual(request.state.nextPieces[0], {
+    name: "O",
+    rotation: 0,
+    rows: ["##", "##"],
+  });
   assert.deepEqual(
     request.questions.action.criteria.left.targets.find(
       (target) => target.rotation === 0 && target.column === 0,

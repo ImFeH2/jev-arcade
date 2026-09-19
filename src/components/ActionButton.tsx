@@ -1,5 +1,6 @@
 import { Button } from "@radix-ui/themes";
-import { motion, useReducedMotion } from "motion/react";
+import { useReducedMotion } from "motion/react";
+import * as motion from "motion/react-m";
 import type { ComponentProps } from "react";
 
 const MotionButton = motion.create(Button);

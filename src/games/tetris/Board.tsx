@@ -1,5 +1,6 @@
-import { AnimatePresence, motion } from "motion/react";
-import { useId } from "react";
+import { AnimatePresence } from "motion/react";
+import * as motion from "motion/react-m";
+import { useId, type ReactNode, type Ref } from "react";
 import {
   HEIGHT,
   SHAPES,
@@ -27,9 +28,19 @@ type Props = {
   next: number[];
   status: string;
   started: boolean;
+  ref?: Ref<SVGSVGElement>;
+  children?: ReactNode;
 };
 
-export function Board({ game, label, next, status, started }: Props) {
+export function Board({
+  game,
+  label,
+  next,
+  status,
+  started,
+  ref,
+  children,
+}: Props) {
   const titleId = useId();
   const cells = game.board.map((row) => [...row]);
   const ghost = new Set<number>();
@@ -97,9 +108,12 @@ export function Board({ game, label, next, status, started }: Props) {
             <span className="empty-next">—</span>
           )}
         </div>
+        <div className="station-details">{children}</div>
         <div className="board-frame">
           <svg
             className="board"
+            ref={ref}
+            tabIndex={ref ? -1 : undefined}
             viewBox={`0 0 ${WIDTH * 24} ${HEIGHT * 24}`}
             role="img"
             aria-label={`${label}: ${game.lines} lines cleared, ${status}`}

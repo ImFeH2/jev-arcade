@@ -40,9 +40,9 @@ Each player has an independent board with the same seven-bag piece sequence. Gra
 - Requests stop before starting, while paused, and after either player loses. In-flight requests are cancelled on pause, exit, or when their piece expires.
 - Switching tabs pauses the match. Resume explicitly to continue.
 - API errors stop further model requests until Retry; gameplay continues.
-- Help opens keyboard controls and appears automatically on the first visit. Dismissing it is remembered in localStorage.
+- Help opens keyboard controls and appears automatically on the first visit. Dismissing it is remembered in localStorage. If browser storage is restricted, the dialog explains that the preference cannot be saved and can still be closed.
 
-The server sends the current board, piece position and shape, next pieces, recent actions, and measured outcomes of reachable placements to the official SDK. The model selects the next button.
+The server sends a row-by-row character canvas: `.` is empty, `#` is settled, `@` is the controlled piece, and `+` is its landing shadow. Current and next pieces include their shapes and orientations. The current piece's action history and measured button outcomes accompany the canvas. The model selects the next button.
 
 ## Checks
 
