@@ -6,22 +6,26 @@
   "license": "Apache-2.0",
   "author": "ImFeH2 <i@feh2.im>",
   "scripts": {
-    "dev": "concurrently --kill-others --names web,api \"vite\" \"tsx watch --tsconfig tsconfig.server.json server/index.ts\"",
+    "dev": "concurrently --kill-others --names web,api \"vite\" \"tsx watch --env-file-if-exists=.env --tsconfig tsconfig.server.json server/index.ts\"",
     "test": "tsx --tsconfig tsconfig.server.json --test tests/*.test.ts",
     "test:live": "tsx --tsconfig tsconfig.server.json tests/live.ts",
-    "build": "tsc -b && tsc -p tsconfig.server.json && vite build",
+    "build": "tsc -b && tsc -p tsconfig.server.json && vite build --outDir dist/client && vite build --ssr server/index.ts --outDir dist/server",
+    "format": "biome format --write .",
+    "format:check": "biome format .",
     "lint": "oxlint",
-    "preview": "vite preview"
+    "preview": "concurrently --kill-others --names web,api \"vite preview --outDir dist/client\" \"node --env-file-if-exists=.env dist/server/index.js\""
   },
   "dependencies": {
     "@babylonjs/core": "^9.27.0",
     "@radix-ui/themes": "^3.3.0",
     "@typesafe-ai/sdk": "^0.6.0",
+    "motion": "^13.4.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "zod": "^4.6.5"
   },
   "devDependencies": {
+    "@biomejs/biome": "2.4.16",
     "@tailwindcss/vite": "^4.3.3",
     "@types/node": "^24.13.3",
     "@types/react": "^19.2.18",

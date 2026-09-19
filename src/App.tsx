@@ -1,57 +1,278 @@
-import { useState } from 'react'
-import { Button, Theme } from '@radix-ui/themes'
-import { HEIGHT, SHAPES, WIDTH, createGame, landing, shape, type Game } from '@/games/tetris/rules'
-import { useMatch, type Command } from '@/games/tetris/useMatch'
-import '@/styles/App.css'
+import { AlertDialog, Dialog, Theme } from "@radix-ui/themes";
+import { AnimatePresence, MotionConfig, motion } from "motion/react";
+import { useRef, useState } from "react";
+import { ActionButton } from "@/components/ActionButton";
+import { Board } from "@/games/tetris/Board";
+import {
+  boardStatus,
+  formatTime,
+  matchStatus,
+} from "@/games/tetris/presentation";
+import { createGame } from "@/games/tetris/rules";
+import { useMatch, type Command } from "@/games/tetris/useMatch";
+import "@/styles/App.css";
 
-const COLORS = ['transparent', '#61d7e8', '#e9d372', '#b5a2ed', '#a4cd83', '#eb8c88', '#8caaf0', '#dfac78']
-const EMPTY = createGame([0])
-const time = (ms: number) => `${Math.floor(ms / 60000).toString().padStart(2, '0')}:${Math.floor(ms / 1000 % 60).toString().padStart(2, '0')}`
-
-function Board({ game, label, duration, next }: { game: Game; label: string; duration: number; next: number[] }) {
-  const cells = game.board.map(row => [...row])
-  const ghost = new Set<number>()
-  if (!game.over) {
-    const final = landing(game)
-    shape(final).forEach((row, y) => row.forEach((cell, x) => { if (cell) ghost.add((final.y + y) * WIDTH + final.x + x) }))
-    shape(game.piece).forEach((row, y) => row.forEach((cell, x) => { if (cell) cells[game.piece.y + y][game.piece.x + x] = game.piece.kind + 1 }))
-  }
-  return <section className="station" aria-label={`${label} board`}>
-    <header className="station-header"><h2>{label}</h2><span className={game.over ? 'status out' : 'status'}>{game.over ? 'OUT' : 'READY'}</span></header>
-    <div className="board-frame">
-      <svg className="board" viewBox={`0 0 ${WIDTH * 24} ${HEIGHT * 24}`} role="img" aria-label={`${label}: ${time(duration)} survived, ${game.lines} lines cleared${game.over ? ', game over' : ''}`}>
-        {cells.flatMap((row, y) => row.map((cell, x) => <rect key={`${x}:${y}`} x={x * 24 + 1} y={y * 24 + 1} width="22" height="22" rx="2" fill={cell ? COLORS[cell] : '#172127'} stroke={ghost.has(y * WIDTH + x) && !cell ? '#65777c' : '#202c32'} strokeWidth="1" />))}
-      </svg>
-      {game.over && <div className="board-overlay">FINISHED</div>}
-    </div>
-    <div className="board-stats"><div><span>SURVIVAL</span><strong>{time(duration)}</strong></div><div><span>LINES</span><strong>{game.lines.toString().padStart(2, '0')}</strong></div></div>
-    <div className="next"><span>NEXT</span>{next.map((kind, index) => <svg key={index} width="42" height="28" viewBox="0 0 48 32" aria-label={`Next piece ${['I', 'O', 'T', 'S', 'Z', 'J', 'L'][kind]}`} role="img">{SHAPES[kind].flatMap((row, y) => row.map((cell, x) => cell ? <rect key={`${x}:${y}`} x={x * 10} y={y * 10 + 5} width="9" height="9" rx="1" fill={COLORS[kind + 1]} /> : null))}</svg>)}</div>
-  </section>
-}
+const EMPTY = createGame([0]);
+const TUTORIAL_KEY = "jev-arcade:tetris-controls";
+const CONTROLS: {
+  action: Command;
+  label: string;
+  symbol: string;
+  key: string;
+}[] = [
+  { action: "left", label: "Move left", symbol: "←", key: "←" },
+  { action: "right", label: "Move right", symbol: "→", key: "→" },
+  { action: "rotate", label: "Rotate", symbol: "↻", key: "↑" },
+  { action: "down", label: "Soft drop", symbol: "↓", key: "↓" },
+  { action: "drop", label: "Hard drop", symbol: "Drop", key: "Space" },
+];
 
 export default function App() {
-  const [round, setRound] = useState(0)
-  const { view, command, pause, retry } = useMatch(round)
-  const start = () => setRound(value => value + 1)
-  const running = view && !view.finished
-  const status = !view ? 'Ready to play'  : view.error ? 'Connection interrupted' : view.waiting ? 'Jev is choosing · both clocks paused' : view.paused ? 'Match paused' : view.finished ? (view.playerTime === view.jevTime ? 'Draw' : view.playerTime > view.jevTime ? 'You survived longer' : 'Jev survived longer') : 'Survive longer. Play your own board.'
-  const controls: [Command, string][] = [['left', 'Left'], ['rotate', 'Rotate'], ['right', 'Right'], ['down', 'Down'], ['drop', 'Drop']]
-  return <Theme appearance="dark" accentColor="mint" grayColor="slate" radius="medium">
-    <main className="arcade">
-      <nav className="masthead"><a href="/">JEV<span> / </span>ARCADE</a><span>01 / TETRIS</span></nav>
-      <header className="intro"><div><span className="eyebrow">HUMAN × SYSTEM ONE</span><h1>Outlast.</h1></div><div className="rules">Two boards. Same pieces.<br />The longest survival wins.</div></header>
-      <section className="connection" aria-label="Match controls">
-        <Button onClick={event => { start(); event.currentTarget.blur() }} disabled={!!running}>Start</Button>
-        {running && <Button variant="soft" onClick={event => { pause(); event.currentTarget.blur() }}>{view.paused ? 'Resume' : 'Pause'}</Button>}
-        {running && <Button variant="outline" onClick={() => setRound(0)}>Exit</Button>}
-      </section>
-      <div className="match-status" role="status"><span className={view?.waiting ? 'indicator waiting' : 'indicator'} />{status}{view?.error && <Button size="1" onClick={event => { retry(); event.currentTarget.blur() }}>Retry</Button>}</div>
-      <div className="arena">
-        <Board game={view?.player ?? EMPTY} label="YOU" duration={view?.playerTime ?? 0} next={view ? view.pieces.slice(view.player.index + 1, view.player.index + 4) : [1, 2, 3]} />
-        <aside className="center-rail"><span>VS</span><div>LEVEL<strong>{Math.floor((view?.elapsed ?? 0) / 30000) + 1}</strong></div><div>JEV CALLS<strong>{view?.calls ?? 0}</strong></div><div>INPUT TOKENS<strong>{(view?.tokens ?? 0).toLocaleString()}</strong></div><div>CONFIDENCE<strong>{Math.round((view?.confidence ?? 0) * 100)}%</strong></div></aside>
-        <Board game={view?.jev ?? EMPTY} label="JEV" duration={view?.jevTime ?? 0} next={view ? view.pieces.slice(view.jev.index + 1, view.jev.index + 4) : [1, 2, 3]} />
-      </div>
-      <footer className="controls"><span>← → MOVE · ↑ ROTATE · ↓ SOFT DROP · SPACE DROP</span><div>{controls.map(([action, label]) => <Button key={action} variant="soft" disabled={!running || view.waiting || view.paused || !!view.error || view.player.over} onClick={event => { command(action); event.currentTarget.blur() }}>{label}</Button>)}</div></footer>
-    </main>
-  </Theme>
+  const [round, setRound] = useState(0);
+  const [exitOpen, setExitOpen] = useState(false);
+  const [tutorialOpen, setTutorialOpen] = useState(
+    () => localStorage.getItem(TUTORIAL_KEY) !== "seen",
+  );
+  const resumeAfterTutorial = useRef(false);
+  const gameArea = useRef<HTMLDivElement>(null);
+  const { view, command, pause, retry } = useMatch(round);
+  const running = !!view && !view.finished;
+  const canPlay = running && !view.paused;
+  const status = matchStatus(view);
+  const focusGame = () => gameArea.current?.focus({ preventScroll: true });
+
+  const openTutorial = (open: boolean) => {
+    if (open) {
+      resumeAfterTutorial.current = running && !view.paused;
+      if (resumeAfterTutorial.current) pause();
+    } else {
+      localStorage.setItem(TUTORIAL_KEY, "seen");
+      if (resumeAfterTutorial.current && view?.paused && !view.finished)
+        pause();
+      resumeAfterTutorial.current = false;
+    }
+    setTutorialOpen(open);
+  };
+
+  return (
+    <Theme appearance="dark" accentColor="gray" grayColor="gray" radius="large">
+      <MotionConfig
+        reducedMotion="user"
+        transition={{ type: "spring", bounce: 0, duration: 0.3 }}
+      >
+        <Dialog.Root open={tutorialOpen} onOpenChange={openTutorial}>
+          <main className="app-shell">
+            <header className="app-header">
+              <span className="brand">Jev Arcade</span>
+              <h1>Tetris</h1>
+              <Dialog.Trigger>
+                <ActionButton variant="soft">Help</ActionButton>
+              </Dialog.Trigger>
+            </header>
+
+            <div className="toolbar">
+              <div className="match-actions">
+                <ActionButton
+                  className="primary-action"
+                  onClick={() => {
+                    if (running) pause();
+                    else setRound((value) => value + 1);
+                    focusGame();
+                  }}
+                >
+                  {running
+                    ? view.paused
+                      ? "Resume"
+                      : "Pause"
+                    : view?.finished
+                      ? "Play again"
+                      : "Start"}
+                </ActionButton>
+                {running && (
+                  <AlertDialog.Root
+                    open={exitOpen}
+                    onOpenChange={(open) => {
+                      if (open && !view.paused) pause();
+                      setExitOpen(open);
+                    }}
+                  >
+                    <AlertDialog.Trigger>
+                      <ActionButton variant="soft">End</ActionButton>
+                    </AlertDialog.Trigger>
+                    <AlertDialog.Content
+                      maxWidth="360px"
+                      onCloseAutoFocus={(event) => {
+                        event.preventDefault();
+                        focusGame();
+                      }}
+                    >
+                      <AlertDialog.Title>End match?</AlertDialog.Title>
+                      <AlertDialog.Description>
+                        This ends the current match.
+                      </AlertDialog.Description>
+                      <div className="dialog-actions">
+                        <AlertDialog.Cancel>
+                          <ActionButton variant="soft">Cancel</ActionButton>
+                        </AlertDialog.Cancel>
+                        <AlertDialog.Action>
+                          <ActionButton
+                            className="primary-action"
+                            onClick={() => setRound(0)}
+                          >
+                            End
+                          </ActionButton>
+                        </AlertDialog.Action>
+                      </div>
+                    </AlertDialog.Content>
+                  </AlertDialog.Root>
+                )}
+                {running && view.error && (
+                  <ActionButton
+                    variant="soft"
+                    onClick={() => {
+                      retry();
+                      focusGame();
+                    }}
+                  >
+                    Retry
+                  </ActionButton>
+                )}
+              </div>
+              <div
+                className="direction-pad"
+                role="group"
+                aria-label="Your controls"
+              >
+                {CONTROLS.map(({ action, label, symbol, key }) => (
+                  <ActionButton
+                    key={action}
+                    variant="soft"
+                    aria-label={label}
+                    title={`${label} (${key})`}
+                    disabled={!canPlay}
+                    onClick={() => {
+                      command(action);
+                      focusGame();
+                    }}
+                  >
+                    <span aria-hidden="true">{symbol}</span>
+                  </ActionButton>
+                ))}
+              </div>
+            </div>
+
+            <div className="match-banner" role="status" aria-atomic="true">
+              <AnimatePresence initial={false}>
+                <motion.span
+                  key={status}
+                  className="status-message"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.14 }}
+                >
+                  {status}
+                </motion.span>
+              </AnimatePresence>
+            </div>
+
+            <div
+              className="workspace"
+              ref={gameArea}
+              tabIndex={-1}
+              aria-label="Tetris match"
+            >
+              <Board
+                game={view?.player ?? EMPTY}
+                label="You"
+                status={boardStatus(view, "player")}
+                started={!!view}
+                next={
+                  view
+                    ? view.pieces.slice(
+                        view.player.index + 1,
+                        view.player.index + 4,
+                      )
+                    : []
+                }
+              />
+              <aside
+                className="match-info"
+                aria-label="Match information"
+                tabIndex={0}
+              >
+                <dl className="shared-metrics">
+                  <div>
+                    <dt>Time</dt>
+                    <dd className="clock">{formatTime(view?.elapsed ?? 0)}</dd>
+                  </div>
+                  <div>
+                    <dt>Speed level</dt>
+                    <dd>{Math.floor((view?.elapsed ?? 0) / 30000) + 1}</dd>
+                  </div>
+                </dl>
+                <div className="jev-metrics">
+                  <h2>Jev</h2>
+                  <dl>
+                    <div>
+                      <dt>Requests</dt>
+                      <dd>{view?.calls ?? 0}</dd>
+                    </div>
+                    <div>
+                      <dt>Confidence</dt>
+                      <dd>
+                        {view?.calls
+                          ? `${Math.round(view.confidence * 100)}%`
+                          : "—"}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>Input tokens</dt>
+                      <dd>{(view?.tokens ?? 0).toLocaleString()}</dd>
+                    </div>
+                  </dl>
+                </div>
+              </aside>
+              <Board
+                game={view?.jev ?? EMPTY}
+                label="Jev"
+                status={boardStatus(view, "jev")}
+                started={!!view}
+                next={
+                  view
+                    ? view.pieces.slice(view.jev.index + 1, view.jev.index + 4)
+                    : []
+                }
+              />
+            </div>
+          </main>
+          <Dialog.Content
+            aria-describedby={undefined}
+            maxWidth="360px"
+            onCloseAutoFocus={(event) => {
+              event.preventDefault();
+              focusGame();
+            }}
+          >
+            <Dialog.Title>Controls</Dialog.Title>
+            <dl className="tutorial-controls">
+              {CONTROLS.map(({ action, label, key }) => (
+                <div key={action}>
+                  <dt>{label}</dt>
+                  <dd>
+                    <kbd>{key}</kbd>
+                  </dd>
+                </div>
+              ))}
+            </dl>
+            <div className="dialog-actions">
+              <Dialog.Close>
+                <ActionButton className="primary-action">Got it</ActionButton>
+              </Dialog.Close>
+            </div>
+          </Dialog.Content>
+        </Dialog.Root>
+      </MotionConfig>
+    </Theme>
+  );
 }

@@ -10,5 +10,10 @@
     "noEmit": true,
     "paths": { "@/*": ["./src/*"] }
   },
-  "include": ["server", "tests", "src/games/tetris/rules.ts", "src/lib/protocol.ts"]
+  "include": [
+    "server",
+    "tests",
+    "src/games/tetris/rules.ts",
+    "src/lib/protocol.ts"
+  ]
 }
