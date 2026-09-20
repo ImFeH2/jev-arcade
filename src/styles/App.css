@@ -83,6 +83,35 @@ h1 {
 .match-actions > .primary-action {
   flex: 1;
 }
+.strategy-select {
+  display: grid;
+  gap: 0.375rem;
+}
+.strategy-label {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.25rem;
+  color: #999;
+  font-size: 0.75rem;
+}
+.strategy-label [role="status"] {
+  font-size: 0.625rem;
+}
+.strategy-options {
+  display: flex;
+  gap: 0.375rem;
+}
+.strategy-options .action-button {
+  flex: 1;
+  min-width: 0;
+  padding-inline: 0.375rem;
+  font-size: 0.75rem;
+}
+.strategy-options .action-button[aria-pressed="true"] {
+  background: #f5f5f7;
+  color: #111;
+}
 .direction-pad {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

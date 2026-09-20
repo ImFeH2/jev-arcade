@@ -44,7 +44,9 @@ export function Board({
   const titleId = useId();
   const cells = game.board.map((row) => [...row]);
   const ghost = new Set<number>();
-  const covered = ["Paused", "Won", "Lost", "Draw"].includes(status);
+  const covered = ["Paused", "Finished", "Won", "Lost", "Draw"].includes(
+    status,
+  );
 
   if (started && !game.over) {
     const final = landing(game);

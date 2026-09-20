@@ -3,6 +3,8 @@ import { AnimatePresence, MotionConfig } from "motion/react";
 import * as motion from "motion/react-m";
 import { useRef, useState } from "react";
 import { ActionButton } from "@/components/ActionButton";
+import { StrategySelect } from "@/components/StrategySelect";
+import type { Strategy } from "@/lib/protocol";
 import { Board } from "@/games/tetris/Board";
 import {
   boardStatus,
@@ -30,6 +32,7 @@ const CONTROLS: {
 
 export default function App() {
   const [round, setRound] = useState(0);
+  const [strategy, setStrategy] = useState<Strategy>("lookahead");
   const [exitOpen, setExitOpen] = useState(false);
   const [tutorialPreference, setTutorialPreference] = useState(
     readTutorialPreference,
@@ -37,9 +40,9 @@ export default function App() {
   const [tutorialOpen, setTutorialOpen] = useState(!tutorialPreference.seen);
   const resumeAfterTutorial = useRef(false);
   const gameArea = useRef<SVGSVGElement>(null);
-  const { view, command, pause, retry } = useMatch(round);
+  const { view, command, pause, retry } = useMatch(round, strategy);
   const running = !!view && !view.finished;
-  const canPlay = running && !view.paused;
+  const canPlay = running && !view.paused && !view.player.over;
   const status = matchStatus(view);
   const focusGame = () => gameArea.current?.focus({ preventScroll: true });
 
@@ -147,6 +150,13 @@ export default function App() {
                     </ActionButton>
                   )}
                 </div>
+                <StrategySelect
+                  value={strategy}
+                  pending={
+                    !!view && !view.jev.over && strategy !== view.strategy
+                  }
+                  onChange={setStrategy}
+                />
                 <div
                   className="direction-pad"
                   role="group"

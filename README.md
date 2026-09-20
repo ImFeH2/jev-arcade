@@ -30,19 +30,20 @@ Development and preview both use API port 3001; stop one before starting the oth
 
 ## Tetris
 
-Each player has an independent board with the same seven-bag piece sequence. Gravity accelerates every 30 seconds of active play. The match ends when either board tops out; the other player wins. Simultaneous top-outs are a draw.
+Each player has an independent board with the same seven-bag piece sequence. Gravity accelerates every 30 seconds of active play. Each board stops when it tops out; the other continues playing. The match ends when both boards finish. The player who survives longer wins; simultaneous top-outs are a draw.
 
 - Arrow keys: move, rotate, or soft drop.
 - Space: hard drop.
 - On-screen buttons support touch input.
-- Jev chooses one action: left, right, down, drop, rotate, or none. It uses the same movement rules as the player.
-- Gravity and the shared clock continue during model requests. Only one request runs at a time, with at least 500 ms between starts; unchanged observations are not requested again.
-- Requests stop before starting, while paused, and after either player loses. In-flight requests are cancelled on pause, exit, or when their piece expires.
+- Choose Metrics or Lookahead. Lookahead is selected initially; changes during play apply to Jev's next piece.
+- Jev chooses a reachable target. The controller follows legal left, right, rotate, and drop inputs, one every 100 ms, under the same movement rules as the player.
+- Gravity and the shared clock continue during requests and movement. Only one request runs at a time, with at least 500 ms between starts. A target that becomes unreachable is discarded and requested again from the current state.
+- Requests stop before starting, while paused, and after Jev finishes. In-flight requests are cancelled on pause, exit, or when their piece expires. Jev continues playing after the human board finishes.
 - Switching tabs pauses the match. Resume explicitly to continue.
 - API errors stop further model requests until Retry; gameplay continues.
 - Help opens keyboard controls and appears automatically on the first visit. Dismissing it is remembered in localStorage. If browser storage is restricted, the dialog explains that the preference cannot be saved and can still be closed.
 
-The server sends a row-by-row character canvas: `.` is empty, `#` is settled, `@` is the controlled piece, and `+` is its landing shadow. Current and next pieces include their shapes and orientations. The current piece's action history and measured button outcomes accompany the canvas. The model selects the next button.
+Metrics describes each target with measured line clears, holes, heights, and surface unevenness. Lookahead describes the consequences in full sentences and adds the next piece's reachable positions and outcome ranges. Both include every target reachable through the supported movement paths, shuffle candidate order, and leave the choice to Jev without a combined score or recommended target.
 
 ## Checks
 

@@ -44,7 +44,23 @@ export type Game = {
   lines: number;
   over: boolean;
 };
-export type Placement = { id: string; rotation: number; x: number; y: number };
+export type Placement = {
+  id: string;
+  rotation: number;
+  x: number;
+  y: number;
+  path: Action[];
+};
+
+export function cells(piece: Piece) {
+  return shape(piece).flatMap((row, y) =>
+    row.flatMap((cell, x) => (cell ? [[piece.x + x, piece.y + y]] : [])),
+  );
+}
+
+export function footprint(piece: Piece) {
+  return JSON.stringify(cells(piece));
+}
 
 export function shape(piece: Piece) {
   let cells = SHAPES[piece.kind].map((row) => [...row]);
@@ -164,29 +180,42 @@ export function drop(game: Game, pieces: number[]) {
 }
 
 export function placements(game: Game): Placement[] {
-  const result: Placement[] = [];
-  const orientations = new Set<string>();
-  let oriented = game;
-  for (let turn = 0; turn < 4; turn++) {
-    if (turn > 0) oriented = rotate(oriented);
-    const rotation = oriented.piece.rotation;
-    const signature = JSON.stringify(shape(oriented.piece));
-    if (orientations.has(signature)) continue;
-    orientations.add(signature);
-
-    for (let x = 0; x < WIDTH; x++) {
-      let shifted = oriented;
-      while (shifted.piece.x !== x) {
-        const next = move(shifted, Math.sign(x - shifted.piece.x), 0);
-        if (next === shifted) break;
-        shifted = next;
-      }
-      if (shifted.piece.x !== x) continue;
-      const final = landing(shifted);
-      result.push({ id: `r${rotation}x${x}`, rotation, x, y: final.y });
+  if (game.over) return [];
+  const queue: { game: Game; path: Action[] }[] = [{ game, path: [] }];
+  const visited = new Set<string>();
+  const result = new Map<string, Placement>();
+  for (let i = 0; i < queue.length; i++) {
+    const current = queue[i];
+    const pose = JSON.stringify(current.game.piece);
+    if (visited.has(pose)) continue;
+    visited.add(pose);
+    const final = landing(current.game);
+    const key = footprint(final);
+    if (!result.has(key)) {
+      result.set(key, {
+        id: `r${final.rotation}x${final.x}`,
+        rotation: final.rotation,
+        x: final.x,
+        y: final.y,
+        path: [...current.path, "drop"],
+      });
+    }
+    for (const action of ["left", "right", "rotate"] as const) {
+      const next = act(current.game, [], action);
+      if (next !== current.game && !visited.has(JSON.stringify(next.piece)))
+        queue.push({ game: next, path: [...current.path, action] });
     }
   }
-  return result;
+  return [...result.values()];
+}
+
+export function targetAction(game: Game, target: Piece): Action | null {
+  if (game.over || game.piece.kind !== target.kind) return null;
+  const key = footprint(target);
+  const reachable = placements(game).find(
+    (option) => footprint({ ...game.piece, ...option }) === key,
+  );
+  return reachable?.path[0] ?? null;
 }
 
 export function act(game: Game, pieces: number[], action: Action): Game {

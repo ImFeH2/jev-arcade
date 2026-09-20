@@ -98,9 +98,17 @@ test("speed increases with active time and request validation rejects invalid da
     board: createGame([0]).board,
     piece: createGame([0]).piece,
     next: [1, 2, 3],
-    previousActions: [],
+    strategy: "metrics",
   };
   assert.equal(decisionRequest.safeParse(valid).success, true);
+  assert.equal(
+    decisionRequest.safeParse({ ...valid, strategy: "lookahead" }).success,
+    true,
+  );
+  assert.equal(
+    decisionRequest.safeParse({ ...valid, strategy: "unknown" }).success,
+    false,
+  );
   assert.equal(
     decisionRequest.safeParse({ ...valid, board: [] }).success,
     false,

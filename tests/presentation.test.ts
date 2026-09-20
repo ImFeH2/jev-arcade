@@ -5,49 +5,72 @@ import {
   formatTime,
   matchStatus,
 } from "@/games/tetris/presentation";
-import { createGame, sequence } from "@/games/tetris/rules";
-import type { Match } from "@/games/tetris/useMatch";
+import { createMatch, updateFinished } from "@/games/tetris/match";
+import { drop, sequence, tick } from "@/games/tetris/rules";
 
-test("Jev thinking leaves the player playing and either loss ends the result", () => {
-  const pieces = sequence(19);
-  const match: Match = {
-    player: createGame(pieces),
-    jev: createGame(pieces),
-    pieces,
-    elapsed: 0,
-    waiting: false,
-    paused: false,
-    error: "",
-    tokens: 0,
-    calls: 0,
-    confidence: 0,
-    finished: false,
-  };
+test("thinking, pause and API errors leave independent board statuses", () => {
+  const match = createMatch(sequence(19), "lookahead");
   assert.equal(matchStatus(null), "Ready");
   assert.equal(boardStatus(null, "player"), "Ready");
   match.waiting = true;
   assert.equal(boardStatus(match, "jev"), "Thinking");
   assert.equal(boardStatus(match, "player"), "Playing");
-  assert.equal(matchStatus(match), "Playing");
   match.paused = true;
   assert.equal(matchStatus(match), "Paused");
-  assert.equal(boardStatus(match, "jev"), "Paused");
   match.paused = false;
   match.error = "Rate limit reached. Wait, then retry.";
   assert.equal(matchStatus(match), match.error);
   assert.equal(boardStatus(match, "jev"), "Unavailable");
   assert.equal(boardStatus(match, "player"), "Playing");
-  match.player.over = true;
-  match.finished = true;
-  assert.equal(matchStatus(match), "Jev wins");
-  assert.equal(boardStatus(match, "player"), "Lost");
-  assert.equal(boardStatus(match, "jev"), "Won");
-  match.player.over = false;
-  match.jev.over = true;
-  assert.equal(matchStatus(match), "You win");
-  match.player.over = true;
-  assert.equal(matchStatus(match), "Draw");
-  assert.equal(boardStatus(match, "jev"), "Draw");
-  assert.equal(formatTime(0), "00:00");
   assert.equal(formatTime(61999), "01:01");
+});
+
+test("either board can finish while the other continues until its own top-out", () => {
+  for (const first of ["player", "jev"] as const) {
+    const second = first === "player" ? "jev" : "player";
+    const match = createMatch(sequence(19), "metrics");
+    while (!match[first].over) match[first] = drop(match[first], match.pieces);
+    match.elapsed = 1000;
+    updateFinished(match);
+    assert.equal(match.finished, false);
+    assert.equal(match.endedAt[first], 1000);
+    assert.equal(boardStatus(match, first), "Finished");
+    assert.equal(boardStatus(match, second), "Playing");
+    assert.equal(
+      matchStatus(match),
+      second === "player" ? "You playing" : "Jev playing",
+    );
+    const finishedBoard = match[first];
+    const previousY = match[second].piece.y;
+    match.elapsed = 2000;
+    match[first] = tick(match[first], match.pieces);
+    match[second] = tick(match[second], match.pieces);
+    updateFinished(match);
+    assert.equal(match[first], finishedBoard);
+    assert.equal(match[second].piece.y, previousY + 1);
+    assert.equal(match.endedAt[first], 1000);
+    assert.equal(match.finished, false);
+    while (!match[second].over)
+      match[second] = drop(match[second], match.pieces);
+    updateFinished(match);
+    assert.equal(match.finished, true);
+    assert.equal(boardStatus(match, first), "Lost");
+    assert.equal(boardStatus(match, second), "Won");
+    assert.equal(
+      matchStatus(match),
+      second === "player" ? "You win" : "Jev wins",
+    );
+  }
+});
+
+test("simultaneous top-outs are a draw", () => {
+  const match = createMatch(sequence(8), "lookahead");
+  while (!match.finished) {
+    match.player = drop(match.player, match.pieces);
+    match.jev = drop(match.jev, match.pieces);
+    updateFinished(match);
+  }
+  assert.equal(matchStatus(match), "Draw");
+  assert.equal(boardStatus(match, "player"), "Draw");
+  assert.equal(boardStatus(match, "jev"), "Draw");
 });

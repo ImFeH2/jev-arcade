@@ -86,16 +86,20 @@ const server = createServer(async (req, res) => {
       retry: { maxRetries: 0 },
       logLevel: "off",
     });
-    const result = await client.systemOne(
-      tetrisQuestion(game, data.next, data.previousActions),
-      {
-        signal: controller.signal,
-      },
+    const { targets, ...question } = tetrisQuestion(
+      game,
+      data.next,
+      data.strategy,
     );
-    const answer = result.answers.action;
+    const result = await client.systemOne(question, {
+      signal: controller.signal,
+    });
+    const answer = result.answers.placement;
+    if (!Object.hasOwn(targets, answer.choice))
+      throw new Error("Unknown placement returned by TypeSafe");
     const response = decisionResponse.parse({
       decisionId: data.decisionId,
-      action: answer.choice,
+      target: targets[answer.choice],
       confidence: answer.confidence,
       probabilities: answer.probabilities,
       inputTokens: result.usage.input_tokens,
