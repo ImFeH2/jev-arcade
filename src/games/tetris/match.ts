@@ -12,6 +12,7 @@ export type Match = {
   tokens: number;
   calls: number;
   confidence: number;
+  latencyMs: number | null;
   strategy: Strategy;
   endedAt: { player: number | null; jev: number | null };
   finished: boolean;
@@ -29,6 +30,7 @@ export function createMatch(pieces: number[], strategy: Strategy): Match {
     tokens: 0,
     calls: 0,
     confidence: 0,
+    latencyMs: null,
     strategy,
     endedAt: { player: null, jev: null },
     finished: false,

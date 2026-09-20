@@ -32,7 +32,7 @@ const CONTROLS: {
 
 export default function App() {
   const [round, setRound] = useState(0);
-  const [strategy, setStrategy] = useState<Strategy>("lookahead");
+  const [strategy, setStrategy] = useState<Strategy>("metrics");
   const [exitOpen, setExitOpen] = useState(false);
   const [tutorialPreference, setTutorialPreference] = useState(
     readTutorialPreference,
@@ -109,7 +109,9 @@ export default function App() {
                       }}
                     >
                       <AlertDialog.Trigger>
-                        <ActionButton variant="soft">End</ActionButton>
+                        <ActionButton variant="soft" color="red">
+                          End
+                        </ActionButton>
                       </AlertDialog.Trigger>
                       <AlertDialog.Content
                         maxWidth="360px"
@@ -128,7 +130,7 @@ export default function App() {
                           </AlertDialog.Cancel>
                           <AlertDialog.Action>
                             <ActionButton
-                              className="primary-action"
+                              color="red"
                               onClick={() => setRound(0)}
                             >
                               End
@@ -210,6 +212,7 @@ export default function App() {
             </aside>
             <div className="workspace" aria-label="Tetris match">
               <Board
+                round={round}
                 ref={gameArea}
                 game={view?.player ?? EMPTY}
                 label="You"
@@ -225,6 +228,7 @@ export default function App() {
                 }
               />
               <Board
+                round={round}
                 game={view?.jev ?? EMPTY}
                 label="Jev"
                 status={boardStatus(view, "jev")}
@@ -246,6 +250,12 @@ export default function App() {
                       {view?.calls
                         ? `${Math.round(view.confidence * 100)}%`
                         : "—"}
+                    </dd>
+                  </div>
+                  <div title="Last completed decision request">
+                    <dt>Latency</dt>
+                    <dd>
+                      {view?.latencyMs == null ? "—" : `${view.latencyMs} ms`}
                     </dd>
                   </div>
                   <div>

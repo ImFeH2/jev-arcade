@@ -1,4 +1,4 @@
-import { AnimatePresence } from "motion/react";
+import { AnimatePresence, useReducedMotion } from "motion/react";
 import * as motion from "motion/react-m";
 import { useId, type ReactNode, type Ref } from "react";
 import {
@@ -23,6 +23,7 @@ const COLORS = [
 const NAMES = ["I", "O", "T", "S", "Z", "J", "L"];
 
 type Props = {
+  round: number;
   game: Game;
   label: string;
   next: number[];
@@ -33,6 +34,7 @@ type Props = {
 };
 
 export function Board({
+  round,
   game,
   label,
   next,
@@ -42,6 +44,7 @@ export function Board({
   children,
 }: Props) {
   const titleId = useId();
+  const reducedMotion = useReducedMotion();
   const cells = game.board.map((row) => [...row]);
   const ghost = new Set<number>();
   const covered = ["Paused", "Finished", "Won", "Lost", "Draw"].includes(
@@ -80,32 +83,54 @@ export function Board({
         <div className="next-pieces" aria-label={`${label} next pieces`}>
           <span>Next</span>
           {started ? (
-            next.map((kind, index) => (
-              <svg
-                key={index}
-                width="36"
-                height="26"
-                viewBox="0 0 48 32"
-                aria-label={`${index + 1}: ${NAMES[kind]}`}
-                role="img"
-              >
-                {SHAPES[kind].flatMap((row, y) =>
-                  row.map((cell, x) =>
-                    cell ? (
-                      <rect
-                        key={`${x}:${y}`}
-                        x={x * 10}
-                        y={y * 10 + 5}
-                        width="9"
-                        height="9"
-                        rx="1"
-                        fill={COLORS[kind + 1]}
-                      />
-                    ) : null,
-                  ),
-                )}
-              </svg>
-            ))
+            <div className="next-queue" key={round}>
+              <AnimatePresence initial={false}>
+                {next.map((kind, index) => (
+                  <motion.div
+                    className="next-piece"
+                    key={game.index + index + 1}
+                    initial={
+                      reducedMotion
+                        ? false
+                        : { y: `${(index + 1) * 100}%`, opacity: 0 }
+                    }
+                    animate={{ y: `${index * 100}%`, opacity: 1 }}
+                    exit={
+                      reducedMotion ? undefined : { y: "-100%", opacity: 0 }
+                    }
+                    transition={{
+                      type: "tween",
+                      duration: reducedMotion ? 0 : 0.18,
+                      ease: "easeOut",
+                    }}
+                  >
+                    <svg
+                      width="64"
+                      height="40"
+                      viewBox="0 0 64 40"
+                      aria-label={`${index + 1}: ${NAMES[kind]}`}
+                      role="img"
+                    >
+                      {SHAPES[kind].flatMap((row, y) =>
+                        row.map((cell, x) =>
+                          cell ? (
+                            <rect
+                              key={`${x}:${y}`}
+                              x={x * 16 + (64 - row.length * 16) / 2}
+                              y={y * 16 + (40 - SHAPES[kind].length * 16) / 2}
+                              width="15"
+                              height="15"
+                              rx="2"
+                              fill={COLORS[kind + 1]}
+                            />
+                          ) : null,
+                        ),
+                      )}
+                    </svg>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            </div>
           ) : (
             <span className="empty-next">—</span>
           )}

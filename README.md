@@ -35,11 +35,11 @@ Each player has an independent board with the same seven-bag piece sequence. Gra
 - Arrow keys: move, rotate, or soft drop.
 - Space: hard drop.
 - On-screen buttons support touch input.
-- Choose Metrics or Lookahead. Lookahead is selected initially; changes during play apply to Jev's next piece.
+- Choose Metrics or Lookahead. Metrics is selected initially; changes during play apply to Jev's next piece.
 - Jev chooses a reachable target. The controller follows legal left, right, rotate, and drop inputs, one every 100 ms, under the same movement rules as the player.
 - Gravity and the shared clock continue during requests and movement. Only one request runs at a time, with at least 500 ms between starts. A target that becomes unreachable is discarded and requested again from the current state.
 - Requests stop before starting, while paused, and after Jev finishes. In-flight requests are cancelled on pause, exit, or when their piece expires. Jev continues playing after the human board finishes.
-- Switching tabs pauses the match. Resume explicitly to continue.
+- Switching tabs or windows keeps the match running. Use Pause to stop it manually. Browsers can throttle background timers; gravity and the clock account for elapsed time.
 - API errors stop further model requests until Retry; gameplay continues.
 - Help opens keyboard controls and appears automatically on the first visit. Dismissing it is remembered in localStorage. If browser storage is restricted, the dialog explains that the preference cannot be saved and can still be closed.
 

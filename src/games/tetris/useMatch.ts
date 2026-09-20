@@ -27,7 +27,6 @@ export function useMatch(round: number, strategy: Strategy) {
     if (!round) return;
     const pieces = sequence(crypto.getRandomValues(new Uint32Array(1))[0]);
     const match = createMatch(pieces, selectedStrategy.current);
-    match.paused = document.hidden;
     let strategyIndex = match.jev.index;
     let disposed = false;
     let controller: AbortController | null = null;
@@ -39,11 +38,12 @@ export function useMatch(round: number, strategy: Strategy) {
     let last = performance.now();
     let painted = 0;
     let frame = 0;
+    let timer = 0;
 
     const publish = () => {
       if (!disposed) setView({ ...match });
     };
-    const runnable = () => !match.paused && !match.finished && !document.hidden;
+    const runnable = () => !match.paused && !match.finished;
     const finish = () => {
       updateFinished(match);
       if (strategyIndex !== match.jev.index) {
@@ -90,6 +90,7 @@ export function useMatch(round: number, strategy: Strategy) {
       requestedIndex = index;
       const decisionId = `${round}:${match.calls}`;
       publish();
+      const startedAt = performance.now();
       try {
         const response = await fetch("/api/decision", {
           method: "POST",
@@ -119,6 +120,7 @@ export function useMatch(round: number, strategy: Strategy) {
         if (disposed || current.signal.aborted || match.jev.over) return;
         if (result.decisionId !== decisionId)
           throw new Error("Mismatched decision received");
+        match.latencyMs = Math.round(performance.now() - startedAt);
         match.tokens += result.inputTokens;
         match.confidence = result.confidence;
         if (match.jev.index === index)
@@ -174,7 +176,12 @@ export function useMatch(round: number, strategy: Strategy) {
         publish();
         painted = now;
       }
-      if (!match.finished) frame = requestAnimationFrame(animate);
+      if (!match.finished) schedule();
+    };
+    const schedule = () => {
+      if (document.hidden)
+        timer = window.setTimeout(() => animate(performance.now()), 100);
+      else frame = requestAnimationFrame(animate);
     };
 
     const keydown = (event: KeyboardEvent) => {
@@ -202,16 +209,19 @@ export function useMatch(round: number, strategy: Strategy) {
       }
     };
     const visibility = () => {
-      if (document.hidden && !match.paused && !match.finished) pause.current();
+      cancelAnimationFrame(frame);
+      clearTimeout(timer);
+      animate(performance.now());
     };
     window.addEventListener("keydown", keydown);
     document.addEventListener("visibilitychange", visibility);
     publish();
-    frame = requestAnimationFrame(animate);
+    schedule();
     return () => {
       disposed = true;
       controller?.abort();
       cancelAnimationFrame(frame);
+      clearTimeout(timer);
       window.removeEventListener("keydown", keydown);
       document.removeEventListener("visibilitychange", visibility);
     };
